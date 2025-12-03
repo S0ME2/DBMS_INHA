@@ -366,22 +366,22 @@ We now explain each case with simple examples.
 If SQL has:
 
 ``` sql
-... IN (subquery)
+    IN (subquery)
 ```
 
 translate it using the **set membership** symbol:
 
-    ... ∈ S
+        ∈ S
 
 If SQL has:
 
 ``` sql
-... NOT IN (subquery)
+    NOT IN (subquery)
 ```
 
 translate it as:
 
-    ... /∈ S
+        /∈ S
 
 ### What is **S**?
 
@@ -389,9 +389,8 @@ translate it as:
 -   You define it using:
 
 ```{=html}
-<!-- -->
-```
     S ← (translation of subquery)
+```
 
 ### Example
 
@@ -443,9 +442,8 @@ translate it as:
 -   We assign it like:
 
 ```{=html}
-<!-- -->
-```
     Q ← (translation of subquery)
+```
 
 -   **x** represents a **tuple** (a row) from Q. It does *not* matter
     what letter is used (x, t, r... all fine).
