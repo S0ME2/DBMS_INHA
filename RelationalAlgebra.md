@@ -38,7 +38,7 @@ Returns all combinations of tuples from two relations.
 
 ### 2.6 Rename (ρ or \ro)
 Used in ERA to rename relations or attributes.
-- **Notation:** `\ro_{S(C, D)}{R(A, B)}`
+- **Notation:** `ρ_{S(C, D)}{R(A, B)}`
 - Renames relation **R(A, B)** to **S(C, D)**.
 
 ---
@@ -188,6 +188,7 @@ Example:
 
 ### 7.2 Allowed Aggregate Functions
 - `count-distinct(X)`
+- `count(x)`
 - `sum(X)`
 - `avg(X)`
 - `min(X)`
@@ -263,7 +264,7 @@ RA/ERA never uses SQL keywords like `WHERE`, `FROM`, `SELECT`.
 Do **not** rename like SQL.
 Use:
 ```
-\ro_{NewName(newA, newB)}{OldName(A, B)}
+ρ_{NewName(newA, newB)}{OldName(A, B)}
 ```
 
 ### 9.4 Aggregation Without γ
@@ -308,12 +309,12 @@ Find all rows in R where A is greater than **every** C in S.
 ---
 
 ## 11. Tips for Getting 100% on the Quiz
-- Master the notation — most errors come from syntax.
+- Master the notation - most errors come from syntax.
 - Always assign subqueries.
 - Always use γ for aggregates.
 - Use quantifiers correctly for ALL/SOME.
 - Practice translating SQL to ERA until it becomes automatic.
-- Memorize renaming syntax — it is the most commonly graded detail.
+- Memorize renaming syntax - it is the most commonly graded detail.
 
 ---
 
@@ -329,10 +330,237 @@ Find all rows in R where A is greater than **every** C in S.
 | ALL | ∀ |
 | SOME | ∃ |
 | EXISTS | ∃ |
-| Renaming | \ro |
+| Renaming | ρ |
 | Aggregates | γ with functions |
 
 ---
 
-You now have all theoretical content and rules required to score **100%** on a quiz about RA and ERA.
+## 13. Technical Note --- Simplified, Professor-Level Explanation
+
+This section explains **how to translate certain SQL constructs into
+Relational Algebra (RA) / Extended Relational Algebra (ERA)**.\
+The official version is very technical; here you get a **clear,
+intuitive, example-based** explanation of every symbol and rule.
+
+------------------------------------------------------------------------
+
+## 13.1 Overview
+
+When translating SQL queries into RA/ERA:
+
+-   Subqueries should be given a **variable name** using the assignment
+    operator `←`.
+-   SQL keywords like **IN, EXISTS, ALL, SOME**, and Boolean operators
+    must be translated into **logical (mathematical) notation**.
+-   Aggregate functions (COUNT, AVG, etc.) translate mostly **as they
+    are**, with a special note about DISTINCT.
+
+We now explain each case with simple examples.
+
+------------------------------------------------------------------------
+
+## 13.2 Translating `IN` and `NOT IN`
+
+### Rule
+
+If SQL has:
+
+``` sql
+... IN (subquery)
+```
+
+translate it using the **set membership** symbol:
+
+    ... ∈ S
+
+If SQL has:
+
+``` sql
+... NOT IN (subquery)
+```
+
+translate it as:
+
+    ... /∈ S
+
+### What is **S**?
+
+-   **S** is the variable name you assign to the result of the subquery.
+-   You define it using:
+
+```{=html}
+<!-- -->
+```
+    S ← (translation of subquery)
+
+### Example
+
+**SQL**
+
+``` sql
+SELECT name
+FROM Students
+WHERE sid IN (SELECT sid FROM HonorRoll);
+```
+
+**RA**
+
+    S ← π sid (HonorRoll)
+    π name (Students ⋈_{Students.sid ∈ S} S)
+
+Here, - `S` is the set of all sids from HonorRoll. - `Students.sid ∈ S`
+means: keep students whose sid belongs to S.
+
+------------------------------------------------------------------------
+
+## 13.3 Translating `EXISTS` and `NOT EXISTS`
+
+### Rule
+
+If SQL has:
+
+``` sql
+EXISTS (Q)
+```
+
+translate it as:
+
+    ∃x Q(x)
+
+If SQL has:
+
+``` sql
+NOT EXISTS (Q)
+```
+
+translate it as:
+
+    ¬∃x Q(x)
+
+### What is **Q**? What is **x**?
+
+-   **Q** is the **relation produced by the subquery**.
+-   We assign it like:
+
+```{=html}
+<!-- -->
+```
+    Q ← (translation of subquery)
+
+-   **x** represents a **tuple** (a row) from Q. It does *not* matter
+    what letter is used (x, t, r... all fine).
+
+### Example
+
+**SQL**
+
+``` sql
+SELECT name
+FROM Students S
+WHERE EXISTS (SELECT *
+              FROM Enroll E
+              WHERE E.sid = S.sid);
+```
+
+**RA**
+
+    Q ← σ_{E.sid = S.sid} (Enroll)
+    ∃x Q(x)
+    π name (Students ⋈ Q)
+
+------------------------------------------------------------------------
+
+## 13.4 Translating `ALL` and `SOME`
+
+These compare a value to **every** or **at least one** value from a
+subquery result.
+
+### Rule Summary
+
+  SQL form         RA/Logic translation
+  ---------------- ----------------------
+  `A < ALL (S)`    `∀x ∈ S (A < x)`
+  `A < SOME (S)`   `∃x ∈ S (A < x)`
+
+### What is **x**? What is **S**?
+
+-   **S** is the relation representing the subquery.
+-   **x** is a **tuple** from S.
+-   `x` may represent a single attribute if S projects only one column.
+
+### Example
+
+**SQL**
+
+``` sql
+SELECT name
+FROM Students
+WHERE age < ALL (SELECT age FROM Professors);
+```
+
+**RA**
+
+    S ← π age (Professors)
+    σ_{∀x ∈ S (Students.age < x)} (Students)
+    π name (...)
+
+------------------------------------------------------------------------
+
+## 13.5 Boolean Operators
+
+Translate:
+
+  SQL   RA/Logic
+  ----- ----------
+  AND   `∧`
+  OR    `∨`
+  NOT   `¬`
+
+Example:
+
+SQL:
+
+``` sql
+WHERE major = 'CS' AND age > 20
+```
+
+RA:
+
+    σ_{major='CS' ∧ age>20} (...)
+
+------------------------------------------------------------------------
+
+## 13.6 `IS NULL` and `IS NOT NULL`
+
+Translate:
+
+  SQL           RA
+  ------------- ----------
+  IS NULL       `= NULL`
+  IS NOT NULL   `≠ NULL`
+
+------------------------------------------------------------------------
+
+## 13.7 SELECT vs SELECT DISTINCT
+
+For translation purposes, treat:
+
+    SELECT
+
+and
+
+    SELECT DISTINCT
+
+as equivalent. RA's projection `π` is defined as removing duplicates
+already.
+
+------------------------------------------------------------------------
+
+## 13.8 Aggregate Functions
+
+-   `COUNT(DISTINCT A)` → `count-distinct(A)`
+-   `COUNT(A)` → `count(A)`
+-   Others (`MIN`, `MAX`, `AVG`, `SUM`) translate directly as in SQL.
+
+You now have all theoretical content and rules required to score **100%** on a quiz about RA and ERA. At least I hope so.
 
